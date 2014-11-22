@@ -18,7 +18,7 @@ var moment = require('moment');
 
 // 'desired' needs very careful calibration based on location and all light sources. 
 // moving the sensor, changing a lamp, etc all imply recalibrating.
-var DESIRED = 0.60;
+var DESIRED = 0.30;
 
 // max is absolute, i.e. when the schedule says 100%
 var MAX = 0.95;
@@ -34,7 +34,7 @@ var BRIDGEIP = null;
 var CURRENTBRI = null;
 var USERNAME = "newdeveloper";
 var PININ = "P9_40"; // AIN1
-var INTERVAL = 10 * 1000; // every 10 seconds
+var INTERVAL = 2 * 1000; // every 10 seconds
 
 // setup: get bridge IP and start main loop with setInterval
 getBridgeIP()
@@ -59,7 +59,7 @@ function calculateAction(analogReading) {
     if (CURRENTBRI == null) return;
 
     var now = moment();
-    var actual = analogReading.value;
+    var actual = analogReading.value; 0.3
     var delta = CalcDesiredLightLevel(DESIRED, now) - actual; 
     var huecurrent = CURRENTBRI;
     var huetarget = huecurrent + delta;
@@ -81,7 +81,7 @@ function CalcDesiredLightLevel(targetValue, currentTime) {
     var factor = 1.0;
     switch(true) {
         case (mins < 60):
-            factor = 0.5 - 0.5*(mins/60); // slow fade from midnight to 1am
+            factor = 0.4 - 0.4*(mins/60); // slow fade from midnight to 1am
             break;
         case (mins < 6 * 60):
             factor = 0; // night time, 1am to 6am
@@ -90,12 +90,12 @@ function CalcDesiredLightLevel(targetValue, currentTime) {
             factor = 100; // normal daytime
             break;
         case (mins < 24 * 60): // fade down to 50% between dinner and midnight
-            factor = 1.0 - (((mins/60)-19)/5) * 0.5; 
+            factor = 1.0 - (((mins/60)-19)/5) * 0.6; 
             break;
         default:
             console.log(" -- WARNING: unexpected minute count " + mins);
     }
-    // console.log("Brightness multiplier: " + factor)
+    console.log("Brightness multiplier: " + factor)
     targetValue *= factor;
     // TODO: override to 0 if Nest set to away
     return targetValue;
