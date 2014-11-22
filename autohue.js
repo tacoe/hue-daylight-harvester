@@ -87,14 +87,10 @@ function CalcDesiredLightLevel(targetValue, currentTime) {
             factor = 0; // night time, 1am to 6am
             break;
         case (mins < 19 * 60):
-            factor = 100; // normal daytime
+            factor = 1; // normal daytime
             break;
-        case (mins < 24 * 60): // fade down to 50% between dinner and midnight
-<<<<<<< HEAD
-            factor = 1.0 - (((mins/60)-19)/5) * 0.6; 
-=======
-            factor = 1.0 - (((mins/60)-19)/5) * 0.5;
->>>>>>> b7bc280f74b6fb9b1716ce8f6d7d1eb82f1405ab
+        case (mins < 24 * 60): // fade down to 40% between dinner and midnight
+            factor = 1.0 - (((mins/60)-19)/5) * 0.6;
             break;
         default:
             console.log(" -- WARNING: unexpected minute count " + mins);
@@ -118,7 +114,7 @@ function CalcDesiredColorTemperature(currentTime) {
             colorTemp = dayTemp;
             break;
         case (mins < 24 * 60): //warm up between dinner (7pm) and midnight
-            colorTemp = 2700 - (((mins/60)-19)/5) * (dayTemp-nightTemp);
+            colorTemp = dayTemp - (((mins/60)-19)/5) * (dayTemp-nightTemp);
             break;
         default:
             console.log(" -- WARNING: unexpected minute count " + mins);
