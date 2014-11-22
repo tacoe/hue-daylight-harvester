@@ -26,19 +26,22 @@ var THRESHOLD = 0.02;
 var USERNAME = "newdeveloper";
 var LIGHTS = [ 1, 2, 3 ];        // 'ardcode me lites, matey
 var LIGHTFACTORS = [ 1, 1, 0.5 ]; // use values < 1 to scale down global max per light
+var MEASURELIGHT = 2;               // what light to use as the reference (make sure its LIGHTFACTOR is 1)
 
 var BRIDGEIP = null;
 var CURRENTBRI = null;
 var PININ = "P9_40"; // AIN1
-var INTERVAL = 2 * 1000; // every 10 seconds
+var INTERVAL = 10 * 1000; // 
 
 // setup: get bridge IP and start main loop with setInterval
-console.log("Starting - connecting to bridge");
+log("AUTOHUE: Desired light level: " + DESIRED);
+log("AUTOHUE: Measuring interval: " + INTERVAL/1000 + "s");
+log("Connecting to bridge...");
 getBridgeIP()
 .then(function() {
     setInterval(mainLoop, INTERVAL);
 }).fail(function(error) {
-    console.log(" -- ERROR: " + error);
+    log(" -- ERROR: " + error);
 }).done();
 
 function mainLoop() {
@@ -46,7 +49,7 @@ function mainLoop() {
     .then(function() {
         b.analogRead(PININ, calculateAction)
     }).fail(function(error) {
-        console.log(" -- ERROR: " + error)
+        log(" -- ERROR: " + error)
     }).done();
 }
 
@@ -68,7 +71,7 @@ function calculateAction(analogReading) {
     var colortemptarget = CalcDesiredColorTemperature(now);
 
     function fn(f) { return Math.round(f*1000)/1000; }
-    console.log('Sensor: ' + fn(actual) + ', hue: ' + fn(huecurrent) + '. Desired/factor: ' + fn(DESIRED) + '/' + fn(factor) +
+    log('Sensor: ' + fn(actual) + ', hue: ' + fn(huecurrent) + '. Brightfactor: ' + fn(factor) +
                 ', new hue: ' + fn(huetarget) + ' ' + Math.round(colortemptarget) + 'K');
 
     // TODO make threshold check work with color temp changes
@@ -95,7 +98,7 @@ function GetTimeBasedFactor(currentTime) {
             factor = 1.0 - (((mins/60)-19)/5) * 0.6;
             break;
         default:
-            console.log(" -- WARNING: unexpected minute count " + mins);
+            log(" -- WARNING: unexpected minute count " + mins);
     }
     return factor;
 }
@@ -116,16 +119,15 @@ function CalcDesiredColorTemperature(currentTime) {
             colorTemp = dayTemp - (((mins/60)-19)/5) * (dayTemp-nightTemp);
             break;
         default:
-            console.log(" -- WARNING: unexpected minute count " + mins);
+            log(" -- WARNING: unexpected minute count " + mins);
     }
-    //console.log("Color temperature: " + colorTemp);
+    //log("Color temperature: " + colorTemp);
     return colorTemp;
 }
 
 function getHueBrightness() {
     var deferred = q.defer();
-    var light = 2;
-    var url = 'http://' + BRIDGEIP + '/api/' + USERNAME + '/lights/' + light;
+    var url = 'http://' + BRIDGEIP + '/api/' + USERNAME + '/lights/' + MEASURELIGHT;
     request(url, function(error, response, body) {
         if (!error && response.statusCode == 200) {
             var json = JSON.parse(body);
@@ -152,34 +154,42 @@ function setHueLightBrightnessAndCT(light, bri, ct) {
     var url = 'http://' + BRIDGEIP + '/api/' + USERNAME + '/lights/' + light + '/state';
     var lampstate = (bri > 3.0);
     var state = { "bri": Math.round(bri), "ct": Math.round(ct), "on": lampstate };
-    // console.log(' -- setLightState: ' + url, JSON.stringify(state));
+    // log(' -- setLightState: ' + url, JSON.stringify(state));
     request.put({
         url: url,
         json: state
     }, function(error, response, body) {
         if (response.statusCode != 200) {
-            console.log(' -- ERROR: Light state not set: ' + response.statusCode, body);
+            log(' -- ERROR: Light state not set: ' + response.statusCode, body);
         }
     });
 }
 
-function getBridgeIP() {
-    var deferred = q.defer();
+// get bridge, with retry (for use at system boot, when wifi may not yet be up)
+function getBridgeIP(deferred) {
+    var deferred = deferred || q.defer();
     request('http://www.meethue.com/api/nupnp', function(error, response, body) {
         if (!error && response.statusCode == 200) {
             var json = JSON.parse(body);
             if (!json || !json[0] || !json[0].internalipaddress) {
-                deferred.reject(' -- ERROR: No bridge found.');
+                deferred.reject(' -- ERROR: No bridge registered in this network.');
             }
             else {
                 BRIDGEIP = json[0].internalipaddress;
-                console.log(' -- BridgeIP found: ' + BRIDGEIP);
+                log(' -- BridgeIP found: ' + BRIDGEIP);
                 deferred.resolve();
             }
         }
         else {
-            deferred.reject(' -- ERROR: cannot reach hue NUPNP');
+            log(' -- Cannot connect to the network (http://www.meethue.com/api/nupnp). Retrying in 10.');
+    		setTimeout(function() {
+    			getBridgeIP(deferred);
+    		}, 10 * 1000);
         }
     });
     return deferred.promise;
+}
+
+function log(s) {
+    console.log(moment().format() + " " + s);
 }
