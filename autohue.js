@@ -3,11 +3,11 @@
     A daylight harvester for Hue, to automate light
 
     Taco Ekkel, Chris Waalberg
-    
+
     NOTES
     - set the timezone on your beaglebone using `dpkg-reconfigure tzdata`
     - npm install packages: q, moment
-    - change the DESIRED based on your situation. Look at the 'act' value in the logging for the current value; 
+    - change the DESIRED based on your situation. Look at the 'act' value in the logging for the current value;
       derive your 'desired' from that.
 */
 
@@ -16,23 +16,23 @@ var q = require('q');
 var request = require('request');
 var moment = require('moment');
 
-// 'desired' needs very careful calibration based on location and all light sources. 
+// 'desired' needs very careful calibration based on location and all light sources.
 // moving the sensor, changing a lamp, etc all imply recalibrating.
 var DESIRED = 0.30;
 
 // max is absolute, i.e. when the schedule says 100%
 var MAX = 0.95;
 
-// this prevents the lights from continously shifting a little bit, 
+// this prevents the lights from continously shifting a little bit,
 // caused by fluctuation in the sensor reading
 var THRESHOLD = 0.02;
 
+var USERNAME = "newdeveloper";
 var LIGHTS = [ 1, 2, 3 ];        // 'ardcode me lites, matey
 var LIGHTFACTORS = [ 1, 1, 0.5 ]; // use values < 1 to scale down global max per light
 
 var BRIDGEIP = null;
 var CURRENTBRI = null;
-var USERNAME = "newdeveloper";
 var PININ = "P9_40"; // AIN1
 var INTERVAL = 2 * 1000; // every 10 seconds
 
@@ -46,7 +46,7 @@ getBridgeIP()
 
 function mainLoop() {
     getHueBrightness()
-    .then(function() { 
+    .then(function() {
         b.analogRead(PININ, calculateAction)
     }).fail(function(error) {
         console.log(" -- ERROR: " + error)
@@ -59,7 +59,7 @@ function calculateAction(analogReading) {
     if (CURRENTBRI == null) return;
 
     var now = moment();
-    var actual = analogReading.value; 0.3
+    var actual = analogReading.value; 
     var delta = CalcDesiredLightLevel(DESIRED, now) - actual; 
     var huecurrent = CURRENTBRI;
     var huetarget = huecurrent + delta;
@@ -70,7 +70,7 @@ function calculateAction(analogReading) {
     console.log('hue=' + huecurrent + ',act=' + actual + ',d=' + delta + ',tgt=' + huetarget + ',ct=' + colortemptarget);
 
     // TODO make threshold check work with color temp changes
-    // if (Math.abs(delta) > THRESHOLD) 
+    // if (Math.abs(delta) > THRESHOLD)
     setHueBrightnessAndCT(huetarget, colortemptarget);
 }
 
@@ -90,7 +90,11 @@ function CalcDesiredLightLevel(targetValue, currentTime) {
             factor = 100; // normal daytime
             break;
         case (mins < 24 * 60): // fade down to 50% between dinner and midnight
+<<<<<<< HEAD
             factor = 1.0 - (((mins/60)-19)/5) * 0.6; 
+=======
+            factor = 1.0 - (((mins/60)-19)/5) * 0.5;
+>>>>>>> b7bc280f74b6fb9b1716ce8f6d7d1eb82f1405ab
             break;
         default:
             console.log(" -- WARNING: unexpected minute count " + mins);
@@ -107,11 +111,11 @@ function CalcDesiredColorTemperature(currentTime) {
     var nightTemp = 2000; // warmest white available
     var colorTemp = dayTemp;
     switch(true) {
-        case (mins < 6 * 60): 
+        case (mins < 6 * 60):
             colorTemp = nightTemp;
             break;
         case (mins < 19 * 60):
-            colorTemp = dayTemp; 
+            colorTemp = dayTemp;
             break;
         case (mins < 24 * 60): //warm up between dinner (7pm) and midnight
             colorTemp = 2700 - (((mins/60)-19)/5) * (dayTemp-nightTemp);
@@ -146,7 +150,7 @@ function setHueBrightnessAndCT(brightness, colortemp) {
     var ct = 1000000 / colortemp;  // convert color temperature to Mired
     for (var i = 0; i < LIGHTS.length; i++) {
         setHueLightBrightnessAndCT(LIGHTS[i], bri * LIGHTFACTORS[i], ct);
-    }    
+    }
 }
 
 function setHueLightBrightnessAndCT(light, bri, ct) {
@@ -184,4 +188,3 @@ function getBridgeIP() {
     });
     return deferred.promise;
 }
-
