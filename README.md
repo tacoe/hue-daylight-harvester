@@ -1,10 +1,10 @@
 Hue Daylight Harvester
 ======================
 
-Full-automatic day-round control of hue lights using light sensors on a Beaglebone Black. (A bit like what Stack Lighting's upcoming Alba light promises to do),
- * measure ambient light (daylight + artificial light) and fluidly adjusts hue light to come as close as possible to a 'desired' light level
- * normal light level from breakfast throughout day; gradual dimming between dinner and midnight, fading out after midnight, off at night
- * neutral color temperature during the day, fading to a warm and cozy temperature throughout the evening.
+Full-automatic day-round control of hue lights using light sensors on a Beaglebone Black. (A bit like what Stack Lighting's upcoming Alba light promises to do). Started with the question: can't we just get rid of light controls altogether? Hue Daylight Harvester does the following continuously:
+ * measure ambient light (daylight + artificial light) and fluidly adjusts hue light to come as close as possible to a 'desired' light level. This means turning down or off when the sun shines, turning back on when it suddenly gets cloudy, etc.
+ * provide normal light level from breakfast throughout day; gradual dimming between dinner and midnight, fading out after midnight, off at night
+ * set neutral color temperature during the day, fading to a warm and cozy temperature throughout the evening.
 
 Notes
 ==
@@ -23,5 +23,9 @@ Usage
   derive your 'desired' from that.
  * Once everything is set, autorun the script (Cloud9 IDE's autorun folder, or a systemd service)
 
+Todo
+====
+ * Fix how scheduled fade-out interferes with harvesting behavior
+ * Add script to install into systemd (cloud9 autorun folder is insecure and starts it before wifi is up, failing bridge connection)
 
 Taco Ekkel & Chris Waalberg

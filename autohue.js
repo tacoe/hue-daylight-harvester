@@ -1,14 +1,10 @@
 /*
     AUTOHUE
-    A daylight harvester for Hue, to automate light
+    A daylight harvester for Hue. Why use a button or app in the first place? Light should just be there, and be right.
 
     Taco Ekkel, Chris Waalberg
-
-    NOTES
-    - set the timezone on your beaglebone using `dpkg-reconfigure tzdata`
-    - npm install packages: q, moment
-    - change the DESIRED based on your situation. Look at the 'act' value in the logging for the current value;
-      derive your 'desired' from that.
+    
+    See README for instructions
 */
 
 var b = require('bonescript');
@@ -18,7 +14,7 @@ var moment = require('moment');
 
 // 'desired' needs very careful calibration based on location and all light sources.
 // moving the sensor, changing a lamp, etc all imply recalibrating.
-var DESIRED = 0.30;
+var DESIRED = 0.50;
 
 // max is absolute, i.e. when the schedule says 100%
 var MAX = 0.95;
@@ -37,6 +33,7 @@ var PININ = "P9_40"; // AIN1
 var INTERVAL = 2 * 1000; // every 10 seconds
 
 // setup: get bridge IP and start main loop with setInterval
+console.log("Starting - connecting to bridge");
 getBridgeIP()
 .then(function() {
     setInterval(mainLoop, INTERVAL);
@@ -59,24 +56,29 @@ function calculateAction(analogReading) {
     if (CURRENTBRI == null) return;
 
     var now = moment();
-    var actual = analogReading.value; 
-    var delta = CalcDesiredLightLevel(DESIRED, now) - actual; 
+    var factor = GetTimeBasedFactor(now);
+    
+    var actual = analogReading.value;
+    var delta = DESIRED - actual; 
+    
     var huecurrent = CURRENTBRI;
     var huetarget = huecurrent + delta;
     if (huetarget < 0) huetarget = 0;
-    if (huetarget > MAX) huetarget = MAX;
+    if (huetarget > MAX * factor) huetarget = MAX * factor; // clamp down here to prevent interference with sensor reading
     var colortemptarget = CalcDesiredColorTemperature(now);
 
-    console.log('hue=' + huecurrent + ',act=' + actual + ',d=' + delta + ',tgt=' + huetarget + ',ct=' + colortemptarget);
+    function fn(f) { return Math.round(f*1000)/1000; }
+    console.log('Sensor: ' + fn(actual) + ', hue: ' + fn(huecurrent) + '. Desired/factor: ' + fn(DESIRED) + '/' + fn(factor) +
+                ', new hue: ' + fn(huetarget) + ' ' + Math.round(colortemptarget) + 'K');
 
     // TODO make threshold check work with color temp changes
     // if (Math.abs(delta) > THRESHOLD)
     setHueBrightnessAndCT(huetarget, colortemptarget);
 }
 
-// in: calibrated desired brightness, current time
-// out: brightness compensated down for time of day
-function CalcDesiredLightLevel(targetValue, currentTime) {
+// in: current time
+// out: factor for multiplying target brightness compensated for time of day
+function GetTimeBasedFactor(currentTime) {
     var mins = currentTime.hours() * 60 + currentTime.minutes();
     var factor = 1.0;
     switch(true) {
@@ -95,10 +97,7 @@ function CalcDesiredLightLevel(targetValue, currentTime) {
         default:
             console.log(" -- WARNING: unexpected minute count " + mins);
     }
-    console.log("Brightness multiplier: " + factor)
-    targetValue *= factor;
-    // TODO: override to 0 if Nest set to away
-    return targetValue;
+    return factor;
 }
 
 function CalcDesiredColorTemperature(currentTime) {
