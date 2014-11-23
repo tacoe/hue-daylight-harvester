@@ -14,7 +14,7 @@ var moment = require('moment');
 
 // 'desired' needs very careful calibration based on location and all light sources.
 // moving the sensor, changing a lamp, etc all imply recalibrating.
-var DESIRED = 0.50;
+var DESIRED = 0.30;
 
 // max is absolute, i.e. when the schedule says 100%
 var MAX = 0.95;
@@ -31,7 +31,8 @@ var MEASURELIGHT = 2;               // what light to use as the reference (make 
 var BRIDGEIP = null;
 var CURRENTBRI = null;
 var PININ = "P9_40"; // AIN1
-var INTERVAL = 10 * 1000; // 
+var INTERVAL = 5 * 1000; // measure + correct every # milliseconds
+var TRANSITIONTIME = 20; // how long to fade to newly corrected brightness (in 100ms: 20 = 2s)
 
 // setup: get bridge IP and start main loop with setInterval
 log("AUTOHUE: Desired light level: " + DESIRED);
@@ -153,7 +154,7 @@ function setHueBrightnessAndCT(brightness, colortemp) {
 function setHueLightBrightnessAndCT(light, bri, ct) {
     var url = 'http://' + BRIDGEIP + '/api/' + USERNAME + '/lights/' + light + '/state';
     var lampstate = (bri > 3.0);
-    var state = { "bri": Math.round(bri), "ct": Math.round(ct), "on": lampstate };
+    var state = { "bri": Math.round(bri), "ct": Math.round(ct), "on": lampstate, "transitiontime": TRANSITIONTIME };
     // log(' -- setLightState: ' + url, JSON.stringify(state));
     request.put({
         url: url,
